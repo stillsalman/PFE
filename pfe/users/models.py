@@ -4,7 +4,7 @@ class Department(models.Model):
     name=models.CharField(max_length=50,primary_key=True)
     def __str__(self):
         return self.name
-
+    
 class User(models.Model):
     ROlES=[('ADMIN','admin'),('HR','HR'),('manager','MANAGER')]
     name=models.CharField(max_length=100,primary_key=True)

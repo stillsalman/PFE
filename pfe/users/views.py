@@ -4,7 +4,22 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import *
 from .serializers import *
-
+ 
+ 
+@api_view(['POST'])
+def login(request):
+     serializer=UserSerializer(data=request.data, partial=True)
+     if(serializer.is_valid()):
+         email=serializer.validated_data['email']
+         password=serializer.validated_data['password']
+         try:
+             user=User.objects.get(email=email,password=password)
+             return Response({"msg": "congrajulation!!"})
+         except User.DoesNotExist:
+             return Response({"msg": "failled to log you in"}, status=status.HTTP_400_BAD_REQUEST)
+         
+     return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+ 
 @api_view(['GET','POST'])
 def users_list(request):
     if request.method == 'GET':
@@ -43,4 +58,6 @@ def user_detail(request,pk):
     elif request.method=='DELETE':
         user.delete()
         return Response({"message": "user deleted"}, status=204)
-        
+
+
+
