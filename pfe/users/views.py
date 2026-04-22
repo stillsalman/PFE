@@ -14,9 +14,9 @@ def login(request):
          password=serializer.validated_data['password']
          try:
              user=User.objects.get(email=email,password=password)
-             return Response({"msg": "congrajulation!!"})
+             return Response({"msg": "congragulation!!"})
          except User.DoesNotExist:
-             return Response({"msg": "failled to log you in"}, status=status.HTTP_400_BAD_REQUEST)
+             return Response({"msg": "failled to log you in"}, status=status.HTTP_403_FORBIDDEN)
          
      return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
  

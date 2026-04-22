@@ -7,8 +7,8 @@ class Department(models.Model):
     
 class User(models.Model):
     ROlES=[('ADMIN','admin'),('HR','HR'),('manager','MANAGER')]
-    name=models.CharField(max_length=100,primary_key=True)
-    email=models.EmailField(max_length=100)
+    name=models.CharField(max_length=100,unique=True)
+    email=models.EmailField(max_length=100,unique=True)
     password=models.CharField(max_length=50)
     role=models.CharField(choices=ROlES)
     department=models.ForeignKey(Department,on_delete=models.CASCADE,null=True,blank=True)
