@@ -1,8 +1,19 @@
 from django.db import models
-from users.models import User,Employee
+from users.models import User
+
+
+
+class TrainingForm(models.Model):
+    from_status=[('DRAFT','draft'),('SENT','sent')]
+    manager=models.ForeignKey(User,on_delete=models.CASCADE)
+    created_at=models.DateField(auto_now_add=True)
+    status=models.CharField(max_length=50,choices=from_status, default='DRAFT')
+    def __str__(self):
+        return str(self.manager)
 
 class TrainingNeed(models.Model):
     PRIORITY_CHOICES=[('M','must'),('N','need'),('L','low')]
+    form=models.ForeignKey(TrainingForm,on_delete=models.CASCADE)
     STATUS_CHOICES=[('APPROVED','approved'),('DENIED','denied'),('WAITING','waiting')]
     title=models.CharField(max_length=100)
     description=models.CharField(max_length=200)
@@ -13,28 +24,23 @@ class TrainingNeed(models.Model):
     def __str__(self):
         return self.title
 
+
+
 class Training(models.Model):
     type_training=[('intern','INTERN'),('extern','EXTERN')]
     status_choices=[('assigned','ASSIGNED'),('notassigned','NOTASSIGNED')]
     title=models.CharField(max_length=100)
-    TrainingNeed_id=models.ForeignKey(TrainingNeed,on_delete=models.CASCADE)
+    TrainingNeed=models.ForeignKey(TrainingNeed,on_delete=models.CASCADE)
     type=models.CharField(choices=type_training,max_length=50)
     status=models.CharField(max_length=100,choices=status_choices,default='notassigned')
     def __str__(self):
         return self.type
     
-class Assignment(models.Model):
-    training_id=models.ForeignKey(Training,on_delete=models.CASCADE)
-    employee_id=models.ForeignKey(Employee,on_delete=models.CASCADE)
-    start_date=models.DateField()
-    end_date=models.DateField()
-    def __str__(self):
-        return self.training_id
-    
+  
 class Decision(models.Model):
     STATUS_CHOICES=[('APPROVED','approved'),('DENIED','denied')]
-    TrainingNeed_id=models.ForeignKey(TrainingNeed,on_delete=models.CASCADE)
-    user_id=models.ForeignKey(User,on_delete=models.CASCADE)
+    TrainingNeed=models.ForeignKey(TrainingNeed,on_delete=models.CASCADE)
+    user=models.ForeignKey(User,on_delete=models.CASCADE)
     result=models.CharField(max_length=100,choices=STATUS_CHOICES)
     date=models.DateTimeField(auto_now_add=True)
     comment=models.CharField(max_length=200)

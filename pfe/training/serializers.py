@@ -10,11 +10,7 @@ class TrainingNeedSerializer(serializers.ModelSerializer):
         model=TrainingNeed
         fields='__all__'
         
-class AssignmentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model=Assignment
-        fields='__all__'
-        
+
 class DecisionSerializers(serializers.ModelSerializer):
     class Meta:
         model=Decision
