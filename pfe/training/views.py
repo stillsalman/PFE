@@ -4,6 +4,8 @@ from .models import *
 from .serializers import *
 from rest_framework import status
 from users.models import *
+from django.utils import timezone
+from datetime import timedelta
 
 @api_view(['GET','POST',])
 def get_post_training_needs(request):
@@ -32,7 +34,7 @@ def update_training_need(request,pk):
         return Response(serializer.errors,status=400)
     elif request.method=="DELETE":
         need.delete()
-        return Response({"message": "user deleted!"})
+        return Response({"message": "training need deleted"})
     elif request.method=="GET":
         serializer=TrainingNeedSerializer(need)
         return Response(serializer.data,status=200)
@@ -42,24 +44,24 @@ def get_trainings(request):
     trainings=Training.objects.all()
     serializer=TrainingSerializer(trainings,many=True)
     return Response(serializer.data,status=200)
-@api_view(['GET','POST','DELETE'])
-def training_response(request,pk):
-    try:
-        training=Training.objects.get(pk=pk)
-    except Training.DoesNotExist:
-        return Response({"message": "training does not exist!"},status=400)
-    if request.method=='GET':
-        serializer=TrainingSerializer(training)
-        return Response(serializer.data,status=200)
-    elif request.method=='PATCH':
-        serializer=TrainingSerializer(training,data=request.data,partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data,status=200)
-        return Response(serializer.errors,status=400)
-    elif request.type=='DELETE':
-        training.delete()
-        return Response({"message": "training deleted!"},status=200)
+# @api_view(['GET','POST','DELETE'])
+# def training_response(request,pk):
+#     try:
+#         training=Training.objects.get(pk=pk)
+#     except Training.DoesNotExist:
+#         return Response({"message": "training does not exist!"},status=400)
+#     if request.method=='GET':
+#         serializer=TrainingSerializer(training)
+#         return Response(serializer.data,status=200)
+#     elif request.method=='PATCH':
+#         serializer=TrainingSerializer(training,data=request.data,partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data,status=200)
+#         return Response(serializer.errors,status=400)
+#     elif request.type=='DELETE':
+#         training.delete()
+#         return Response({"message": "training deleted!"},status=200)
     
 @api_view(['POST'])
 def make_decesion(request,pk):
@@ -88,12 +90,13 @@ def getForm(request,pk):
     user=User.objects.get(pk=pk)
     if user.role!='HR':
         return Response({"message": "you dont have access to this page!"},status=401)
-    users=User.objects.get(role='manager')
-    serializer=FormSerializer(users,msny=True)
+    users=User.objects.filter(role='manager')
+    serializer=FormSerializer(users,many=True)
     return Response(serializer.data)
 
 @api_view(['POST'])
 def send_forms(request):
+    # 9olo l rayan ydir confirmation!!
     manager_ids = request.data.get('managers')
     if  not manager_ids:
         return Response({"message": "managers are required"}, status=400)
@@ -104,7 +107,8 @@ def send_forms(request):
         except User.DoesNotExist:
             continue
         form, created = TrainingForm.objects.get_or_create(
-            manager=manager
+            manager=manager,
+            defaults={'finalDate': timezone.now().date() + timedelta(days=7)}
         )
         created_forms.append(form.id)
         notification=Notification.objects.create(
@@ -117,4 +121,19 @@ def send_forms(request):
         "forms": created_forms
     })
     
+@api_view(['GET'])
+def manager_form(request,pk):
+    form=TrainingForm.objects.latest("created_at")
+    if timezone.now() > form.finalDate:
+        return Response({"message": "form is closed!"},status=401)
+    forms=TrainingForm.objects.filter(created_at=form.created_at)
+    try:
+        currentForm=forms.get(manager=pk)
+    except TrainingForm.DoesNotExist:
+        return Response({"message": "you dont have access to the form"},status=401)
+    
+    needs=TrainingNeed.objects.filter(created_by=pk,form=currentForm)
+    serializer=TrainingNeedSerializer(needs,many=True)
+    return Response(serializer.data)
+
     

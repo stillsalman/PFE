@@ -7,6 +7,7 @@ class TrainingForm(models.Model):
     from_status=[('DRAFT','draft'),('SENT','sent')]
     manager=models.ForeignKey(User,on_delete=models.CASCADE)
     created_at=models.DateField(auto_now_add=True)
+    finalDate=models.DateField()
     status=models.CharField(max_length=50,choices=from_status, default='DRAFT')
     def __str__(self):
         return str(self.manager)
