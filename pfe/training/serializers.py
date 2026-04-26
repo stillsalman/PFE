@@ -15,3 +15,8 @@ class DecisionSerializers(serializers.ModelSerializer):
     class Meta:
         model=Decision
         fields='__all__'
+        
+class FormSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=TrainingForm
+        fields='__all__'

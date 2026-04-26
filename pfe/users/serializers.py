@@ -10,3 +10,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model=Employee
         field='__all__'
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Notification
+        field='__all__'

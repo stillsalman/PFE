@@ -59,5 +59,12 @@ def user_detail(request,pk):
         user.delete()
         return Response({"message": "user deleted"}, status=204)
 
-
-
+@api_view(['GET'])
+def get_notification(request,pk):
+    try:
+        user=User.objects.get(pk=pk)
+    except User.DoesNotExist:
+        return Response({"message": "user does not exist!"},error=400)
+    notif=Notification.objects.get(user=user)
+    serializer=NotificationSerializer(notif,many=True)
+    return Response(serializer.data)

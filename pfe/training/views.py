@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from .models import *
 from .serializers import *
 from rest_framework import status
+from users.models import *
 
 @api_view(['GET','POST',])
 def get_post_training_needs(request):
@@ -81,3 +82,39 @@ def make_decesion(request,pk):
         return Response({"message:" "decesion add status changed?"},status=200)
         
     return Response(serializer.errors,status=400)
+
+@api_view(['GET'])
+def getForm(request,pk):
+    user=User.objects.get(pk=pk)
+    if user.role!='HR':
+        return Response({"message": "you dont have access to this page!"},status=401)
+    users=User.objects.get(role='manager')
+    serializer=FormSerializer(users,msny=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+def send_forms(request):
+    manager_ids = request.data.get('managers')
+    if  not manager_ids:
+        return Response({"message": "managers are required"}, status=400)
+    created_forms = []
+    for manager_id in manager_ids:
+        try:
+            manager = User.objects.get(id=manager_id, role='manager')
+        except User.DoesNotExist:
+            continue
+        form, created = TrainingForm.objects.get_or_create(
+            manager=manager
+        )
+        created_forms.append(form.id)
+        notification=Notification.objects.create(
+            user=manager,
+            title='Training form',
+            message='make sure to fill the training form on the link down below!'
+        )
+    return Response({
+        "message": "forms sent",
+        "forms": created_forms
+    })
+    
+    

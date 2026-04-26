@@ -6,7 +6,7 @@ class Department(models.Model):
         return self.name
     
 class User(models.Model):
-    ROlES=[('ADMIN','admin'),('HR','HR'),('manager','MANAGER')]
+    ROlES=[('ADMIN','admin'),('HR','HR'),('MANAGER','manager')]
     name=models.CharField(max_length=100,unique=True)
     email=models.EmailField(max_length=100,unique=True)
     password=models.CharField(max_length=50)
@@ -22,3 +22,13 @@ class Employee(models.Model):
     telephone=models.IntegerField()
     def __str__(self):
         return self.name
+    
+class Notification(models.Model):
+    user=models.ForeignKey(User,on_delete=models.CASCADE)
+    title=models.CharField(max_length=50)
+    message=models.CharField(max_length=150)
+    is_read=models.BooleanField(default=False)
+    created_at=models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.title
