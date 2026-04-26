@@ -90,7 +90,7 @@ def getForm(request,pk):
     user=User.objects.get(pk=pk)
     if user.role!='HR':
         return Response({"message": "you dont have access to this page!"},status=401)
-    users=User.objects.filter(role='manager')
+    users=User.objects.filter(role='MANAGER')
     serializer=FormSerializer(users,many=True)
     return Response(serializer.data)
 
@@ -103,7 +103,7 @@ def send_forms(request):
     created_forms = []
     for manager_id in manager_ids:
         try:
-            manager = User.objects.get(id=manager_id, role='manager')
+            manager = User.objects.get(id=manager_id, role='MANAGER')
         except User.DoesNotExist:
             continue
         form, created = TrainingForm.objects.get_or_create(

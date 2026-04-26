@@ -65,6 +65,6 @@ def get_notification(request,pk):
         user=User.objects.get(pk=pk)
     except User.DoesNotExist:
         return Response({"message": "user does not exist!"},error=400)
-    notif=Notification.objects.get(user=user)
+    notif=Notification.objects.filter(user=user)
     serializer=NotificationSerializer(notif,many=True)
     return Response(serializer.data)
