@@ -1,24 +1,66 @@
 from django.shortcuts import render
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, BasePermission, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from .models import *
 from .serializers import *
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate 
+ 
+class IsDDRH(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated
+            and request.user.role == User.Role.DDRH
+        )
+        
+class IsEmployeur(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated
+            and request.user.role == User.Role.EMPLOYEUR
+        )
+
+class IsAdminRole(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated
+            and request.user.role == User.Role.ADMIN
+        )
  
  
-@api_view(['POST'])
+ 
+ 
+@api_view(["POST"])
+@permission_classes([AllowAny])
 def login(request):
-     serializer=UserSerializer(data=request.data, partial=True)
-     if(serializer.is_valid()):
-         email=serializer.validated_data['email']
-         password=serializer.validated_data['password']
-         try:
-             user=User.objects.get(email=email,password=password)
-             return Response({"msg": "congragulation!!"})
-         except User.DoesNotExist:
-             return Response({"msg": "failled to log you in"}, status=status.HTTP_403_FORBIDDEN)
-         
-     return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+    username = request.data.get("username")
+    password = request.data.get("password")
+    if not username or not password:
+        return Response(
+            {
+                "message": "Le nom d'utilisateur et le mot de passe sont obligatoires."
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    user = authenticate(username=username, password=password)
+    if user is None:
+        return Response(
+            {
+                "message": "Nom d'utilisateur ou mot de passe incorrect."
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+    refresh = RefreshToken.for_user(user)
+    return Response(
+        {
+            "message": "Connexion rÃ©ussie.",
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        },
+        status=status.HTTP_200_OK
+    )
  
 @api_view(['GET','POST'])
 def users_list(request):
