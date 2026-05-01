@@ -4,5 +4,6 @@ urlpatterns = [
     path('training-needs/', get_post_training_needs),
     path('training-needs/<int:pk>', update_training_need),
     path('trainings',get_trainings),
-    path('decesion/<int:pk>',make_decesion)
+    path('decesion/<int:pk>',make_decesion),
+    path('export/training-needs/', Generate_report),
     ]
