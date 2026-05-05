@@ -63,7 +63,7 @@ def login(request):
     )
  
 @api_view(['GET','POST'])
-@permission_classes([IsAdminRole])
+@permission_classes([AllowAny])#IsAdminRole
 def users_list(request):
     if request.method == 'GET':
         #handle get request
@@ -80,7 +80,7 @@ def users_list(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['GET','PATCH','DELETE'])
-@permission_classes([IsAdminRole])
+@permission_classes([AllowAny])#IsAdminRole
 def user_detail(request,pk):
     
     try:
@@ -104,7 +104,7 @@ def user_detail(request,pk):
         return Response({"message": "user deleted"}, status=204)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])#IsAuthenticated
 def get_notification(request,pk):
     try:
         user=User.objects.get(pk=pk)
@@ -114,7 +114,7 @@ def get_notification(request,pk):
     serializer=NotificationSerializer(notif,many=True)
     return Response(serializer.data)
 @api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])#IsAuthenticated
 def is_read(request,pk):
     try:
         note=Notification.objects.get(pk=pk)

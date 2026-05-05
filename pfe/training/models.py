@@ -1,13 +1,16 @@
 from django.db import models
 from users.models import User
-
+from django.utils import timezone
+from datetime import timedelta
+def default_final_date():
+    return timezone.now().date() + timedelta(days=7)
 
 
 class TrainingForm(models.Model):
-    from_status=[('DRAFT','draft'),('SENT','sent')]
+    from_status=[('DRAFT','draft'),('SENT','sent'),('HANDLED','handled')]
     manager=models.ForeignKey(User,on_delete=models.CASCADE)
     created_at=models.DateField(auto_now_add=True)
-    finalDate=models.DateField()
+    finalDate=models.DateField(default=default_final_date)
     status=models.CharField(max_length=50,choices=from_status, default='DRAFT')
     def __str__(self):
         return str(self.manager)

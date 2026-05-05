@@ -13,20 +13,26 @@ from openpyxl.styles import Font, Alignment
 from openpyxl.utils import get_column_letter
 from users.views import *
 
-@api_view(['GET','POST',])
-@permission_classes([IsEmployeur])
+@api_view(['POST'])
+@permission_classes([AllowAny])#IsEmployeur
 def post_training_needs(request):
-    serializer= TrainingNeedSerializer(data=request.data)
+    serializer= TrainingNeedSerializer(data=request.data, partial=True)
     if serializer.is_valid():
-        serializer.save()
+        form = TrainingForm.objects.filter(manager=request.user).order_by('-created_at').first()
+        if form.status=='SENT':
+            return Response({"message": "can't add more needs, the form is already submited!"},status=400)        
+        serializer.save(created_by=request.user,form=form)
         return Response(serializer.data,status=status.HTTP_201_CREATED)
     return Response(serializer.errors,status=400)
     
 @api_view(['GET','DELETE','PATCH'])
-@permission_classes([IsEmployeur])
+@permission_classes([AllowAny])#IsEmployeur
 def update_training_need(request,pk):
     try:
         need=TrainingNeed.objects.get(pk=pk)
+        form=need.form
+        if form.status=='SENT':
+            return Response({"message": "form already submited"},status=400)
     except TrainingNeed.DoesNotExist:
        return Response({"meesage": "training need not found"}, status=400)
     if request.method=="PATCH":
@@ -43,7 +49,7 @@ def update_training_need(request,pk):
         return Response(serializer.data,status=200)
         
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])#IsAuthenticated
 def get_trainings(request):
     trainings=Training.objects.all()
     serializer=TrainingSerializer(trainings,many=True)
@@ -69,82 +75,96 @@ def get_trainings(request):
 #         return Response({"message": "training deleted!"},status=200)
     
 @api_view(['POST'])
-@permission_classes([IsDDRH])
+@permission_classes([])#IsDDRH
 def make_decesion(request,pk):
     try:
         need=TrainingNeed.objects.get(pk=pk)
+        form=need.form
     except TrainingNeed.DoesNotExist:
         return Response({"message": "training need does not exist!"},status=400)
     serializer=DecisionSerializers(data=request.data,partial=True)
     if serializer.is_valid():
-        decesion=serializer.save(TrainingNeed_id=need)
+        decesion=serializer.save(TrainingNeed=need, user=request.user)
         need.status=decesion.result
         need.save()
+        try:
+            form.objects.filter(status='SENT')
+        except TrainingForm.DoesNotExist:
+            form.status='HANDLED'
         if decesion.result=='APPROVED':
             training=Training.objects.create(
                 title=need.title,
-                TrainingNeed_id=need,
+                TrainingNeed=need,
                 status='notassigned',
                 type=request.data.get('type')
                 )
-        return Response({"message:" "decesion add status changed?"},status=200)
+        return Response({"message:" "decesion add status changed"},status=200)
         
     return Response(serializer.errors,status=400)
 
-@api_view(['GET'])
-@permission_classes([IsDDRH])
-def getForm(request):
-    users=User.objects.filter(role='MANAGER')
-    serializer=FormSerializer(users,many=True)
-    return Response(serializer.data)
-
-@api_view(['POST'])
-@permission_classes([IsDDRH])
-def send_forms(request):
+@api_view(['POST','GET'])
+@permission_classes([AllowAny])#IsDDRH
+def get_post_forms(request):
+    if request.method=='GET':
+        users=User.objects.filter(role='MANAGER')
+        serializer=UserSerializer(users,many=True)
+        return Response(serializer.data)    
     # 9olo l rayan ydir confirmation!!
-    manager_ids = request.data.get('managers')
-    if  not manager_ids:
-        return Response({"message": "managers are required"}, status=400)
-    created_forms = []
-    for manager_id in manager_ids:
-        try:
-            manager = User.objects.get(id=manager_id, role='MANAGER')
-        except User.DoesNotExist:
-            continue
-        form, created = TrainingForm.objects.get_or_create(
-            manager=manager,
-            defaults={'finalDate': timezone.now().date() + timedelta(days=7)}
-        )
-        created_forms.append(form.id)
-        notification=Notification.objects.create(
-            user=manager,
-            title='Training form',
-            message='make sure to fill the training form on the link down below!'
-        )
-    return Response({
-        "message": "forms sent",
-        "forms": created_forms
-    })
-    
-@api_view(['GET'])
-@permission_classes([IsEmployeur])
+    elif request.method=='POST':
+        print(request.data)
+        manager_ids = request.data.get('managers')
+        if  not manager_ids:
+            return Response({"message": "managers are required"}, status=400)
+        created_forms = []
+        for manager_id in manager_ids:
+            try:
+                manager = User.objects.get(id=manager_id, role='MANAGER')
+            except User.DoesNotExist:
+                continue
+            form = TrainingForm.objects.create(
+                manager=manager
+            )
+            created_forms.append(form.id)
+            notification=Notification.objects.create(
+                user=manager,
+                title='Training form',
+                message='make sure to fill the training form on the link down below!'
+            )
+        return Response({
+            "message": "forms sent",
+            "forms": created_forms
+        })
+    #token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc3OTI1MDg3LCJpYXQiOjE3Nzc5MjQ3ODcsImp0aSI6IjdmOTc3MGI4ZjJhYjRhZDBhNDAyM2YzZmYxZTE4MzgyIiwidXNlcl9pZCI6IjExIn0.iFP3Co4upsbruPBNLCjSQLvuDTzDGFmzV1HxYgXj5oU
+@api_view(['GET','POST'])
+@permission_classes([IsAuthenticated])#IsEmployeur
 def manager_form(request):
     user=request.user
-    form=TrainingForm.objects.latest("created_at")
-    if timezone.now() > form.finalDate:
-        return Response({"message": "form is closed!"},status=401)
-    forms=TrainingForm.objects.filter(created_at=form.created_at)
-    try:
-        currentForm=forms.get(manager=user)
-    except TrainingForm.DoesNotExist:
-        return Response({"message": "you dont have access to the form"},status=401)
-    
-    needs=TrainingNeed.objects.filter(created_by=user,form=currentForm)
-    serializer=TrainingNeedSerializer(needs,many=True)
-    return Response(serializer.data)
-
+    if request.method=='GET':
+        form=TrainingForm.objects.latest("created_at")
+        if timezone.now().date() > form.finalDate:
+            return Response({"message": "form is closed!"},status=401)
+        forms=TrainingForm.objects.filter(created_at=form.created_at)
+        try:
+            currentForm=forms.get(manager=user)
+        except TrainingForm.DoesNotExist:
+            return Response({"message": "you dont have access to the form"},status=401)
+        
+        needs=TrainingNeed.objects.filter(created_by=user,form=currentForm)
+        serializer=TrainingNeedSerializer(needs,many=True)
+        return Response({"needs":serializer.data})
+    elif request.method=='POST':
+        form=TrainingForm.objects.latest(manager=user)
+        form.status='SENT'
+        form.save()
+        return Response({"message": "form submited"})        
+        
+        
+        
+        
+        
+        
 @api_view(['GET'])
-@permission_classes([IsDDRH])
+@permission_classes([AllowAny])#IsDDRH
 def Generate_report(request):
     
     year = request.GET.get('year')
@@ -200,3 +220,23 @@ def Generate_report(request):
 
     wb.save(response)
     return response
+
+@api_view(['GET'])
+@permission_classes([AllowAny])#IsDDRH
+def access_submited_forms(request):
+    forms=TrainingForm.objects.filter(status='SENT')
+    if not forms.exists():
+        return Response({"message": "no form have been submited yet"})
+    serializer=FormSerializer(forms,many=True)
+    return Response({"forms": serializer.data })
+
+@api_view(['POST'])
+@permission_classes([AllowAny])#IsDDRH
+def manage_submited_forms(request,pk):
+    try:
+        form=TrainingForm.object.get(pk=pk) 
+    except TrainingForm.DoesNotExist:
+        return Response({"message": "form does not exist"},status=400)
+    needs=TrainingNeed.objects.filter(form=form)
+    serializer=TrainingNeedSerializer(needs,many=True)
+    return Response({"needs": serializer.data})
