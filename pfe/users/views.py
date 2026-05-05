@@ -105,9 +105,9 @@ def user_detail(request,pk):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])#IsAuthenticated
-def get_notification(request,pk):
+def get_notification(request):
     try:
-        user=User.objects.get(pk=pk)
+        user=User.objects.get(pk=request.data.get('pk'))
     except User.DoesNotExist:
         return Response({"message": "user does not exist!"},error=400)
     notif=Notification.objects.filter(user=user)

@@ -75,7 +75,7 @@ def get_trainings(request):
 #         return Response({"message": "training deleted!"},status=200)
     
 @api_view(['POST'])
-@permission_classes([])#IsDDRH
+@permission_classes([AllowAny])#IsDDRH
 def make_decesion(request,pk):
     try:
         need=TrainingNeed.objects.get(pk=pk)
@@ -87,10 +87,12 @@ def make_decesion(request,pk):
         decesion=serializer.save(TrainingNeed=need, user=request.user)
         need.status=decesion.result
         need.save()
-        try:
-            form.objects.filter(status='SENT')
-        except TrainingForm.DoesNotExist:
+    
+        submited_needs=TrainingNeed.objects.filter(form=form)
+        
+        if not    submited_needs.filter(status='WAITING').exists():
             form.status='HANDLED'
+            form.save()
         if decesion.result=='APPROVED':
             training=Training.objects.create(
                 title=need.title,
@@ -98,6 +100,7 @@ def make_decesion(request,pk):
                 status='notassigned',
                 type=request.data.get('type')
                 )
+            training.save()
         return Response({"message:" "decesion add status changed"},status=200)
         
     return Response(serializer.errors,status=400)
@@ -136,7 +139,7 @@ def get_post_forms(request):
         })
     #token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc3OTI1MDg3LCJpYXQiOjE3Nzc5MjQ3ODcsImp0aSI6IjdmOTc3MGI4ZjJhYjRhZDBhNDAyM2YzZmYxZTE4MzgyIiwidXNlcl9pZCI6IjExIn0.iFP3Co4upsbruPBNLCjSQLvuDTzDGFmzV1HxYgXj5oU
 @api_view(['GET','POST'])
-@permission_classes([IsAuthenticated])#IsEmployeur
+@permission_classes([AllowAny])#IsEmployeur
 def manager_form(request):
     user=request.user
     if request.method=='GET':
@@ -153,7 +156,7 @@ def manager_form(request):
         serializer=TrainingNeedSerializer(needs,many=True)
         return Response({"needs":serializer.data})
     elif request.method=='POST':
-        form=TrainingForm.objects.latest(manager=user)
+        form=TrainingForm.objects.filter(manager=user).order_by('-created_at').first()
         form.status='SENT'
         form.save()
         return Response({"message": "form submited"})        
@@ -225,16 +228,13 @@ def Generate_report(request):
 @permission_classes([AllowAny])#IsDDRH
 def access_submited_forms(request):
     forms=TrainingForm.objects.filter(status='SENT')
-    if not forms.exists():
-        return Response({"message": "no form have been submited yet"})
     serializer=FormSerializer(forms,many=True)
     return Response({"forms": serializer.data })
-
-@api_view(['POST'])
-@permission_classes([AllowAny])#IsDDRH
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def manage_submited_forms(request,pk):
     try:
-        form=TrainingForm.object.get(pk=pk) 
+        form=TrainingForm.objects.get(pk=pk)
     except TrainingForm.DoesNotExist:
         return Response({"message": "form does not exist"},status=400)
     needs=TrainingNeed.objects.filter(form=form)
