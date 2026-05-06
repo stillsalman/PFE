@@ -107,6 +107,11 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+#mmobilis685@gmail.com
+#asdfghjkl1234567890
+FRONTEND_URL = "http://localhost:8000"
+
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
