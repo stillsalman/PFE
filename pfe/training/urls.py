@@ -10,4 +10,5 @@ urlpatterns = [
     path('form',manager_form),
     path('DDRH/submitedForms',access_submited_forms),
     path('DDRH/submitedForms/<int:pk>',manage_submited_forms),
+    path('DDRH/dashboard', ddrh_dashboard),
     ]

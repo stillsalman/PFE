@@ -12,6 +12,7 @@ from django.http import HttpResponse
 from openpyxl.styles import Font, Alignment
 from openpyxl.utils import get_column_letter
 from users.views import *
+from django.db.models import Count
 
 @api_view(['POST'])
 @permission_classes([AllowAny])#IsEmployeur
@@ -240,3 +241,51 @@ def manage_submited_forms(request,pk):
     needs=TrainingNeed.objects.filter(form=form)
     serializer=TrainingNeedSerializer(needs,many=True)
     return Response({"needs": serializer.data})
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def ddrh_dashboard(request):
+    fiches_envoyees = TrainingForm.objects.count()
+    formations_demandees = TrainingNeed.objects.count()
+    formations_validees = TrainingNeed.objects.filter(status='APPROVED').count()
+    formations_refusees = TrainingNeed.objects.filter(status='DENIED').count()
+
+    # Fiches à valider = besoins pas encore décidés
+    fiches_a_valider = TrainingNeed.objects.exclude(
+        status__in=['APPROVED', 'DENIED']
+    ).count()
+
+    # Utilisateurs managers / employeurs
+    utilisateurs = User.objects.filter(role='MANAGER').count()
+
+    # État des besoins / fiches pour donut chart
+    etat_fiches = (
+        TrainingNeed.objects
+        .values('status')
+        .annotate(total=Count('id'))
+        .order_by('status')
+    )
+
+    # Formations les plus demandées
+    formations_plus_demandees = (
+        TrainingNeed.objects
+        .values('title')
+        .annotate(total=Count('id'))
+        .order_by('-total')[:5]
+    )
+
+    data = {
+        "stats": {
+            "fiches_envoyees": fiches_envoyees,
+            "fiches_a_valider": fiches_a_valider,
+            "formations_demandees": formations_demandees,
+            "formations_validees": formations_validees,
+            "formations_refusees": formations_refusees,
+            "utilisateurs": utilisateurs,
+        },
+        "etat_fiches": list(etat_fiches),
+        "formations_plus_demandees": list(formations_plus_demandees),
+    }
+
+    return Response(data, status=200)
+    
